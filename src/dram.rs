@@ -1,19 +1,19 @@
 use crate::{devices::device::Device, bus::DRAM_SIZE, exception::Exception, utils::{concat_halfword, concat_word, get_byte_from_halfword, get_byte_from_word}};
 
 pub struct Dram {
-    pub content: [u8; DRAM_SIZE as usize],
+    pub content: Vec<u8>,
 }
 
 impl Dram {
     pub fn new() -> Self {
         Self {
-            content: [0; DRAM_SIZE as usize],
+            content: vec![0; DRAM_SIZE as usize],
         }
     }
 }
 impl Device for Dram {
     fn read(&mut self, addr: u32, size: crate::cpu::Size) -> Result<u32, crate::exception::Exception> {
-        if addr as usize >= self.content.len() {
+        if addr >= DRAM_SIZE {
             return Err(Exception::LoadIllegalAddress);
         }
         match size {
@@ -38,7 +38,7 @@ impl Device for Dram {
     }
 
     fn write(&mut self, addr: u32, data: u32, size: crate::cpu::Size) -> Result<(), crate::exception::Exception> {
-        if addr as usize >= self.content.len() {
+        if addr >= DRAM_SIZE {
             return Err(Exception::LoadIllegalAddress);
         }
         match size {
