@@ -117,10 +117,10 @@ impl Instruction {
 }
 
 pub struct Cpu {
-    registers: [u32; REGISTERS_COUNT],
-    pc: u32,
-    hi: u32,
-    lo: u32,
+    pub registers: [u32; REGISTERS_COUNT],
+    pub pc: u32,
+    pub hi: u32,
+    pub lo: u32,
     pub bus: Bus
 }
 impl Cpu {
@@ -161,6 +161,10 @@ impl Cpu {
                         0x03 => {
                             // sra
                             self.registers[rd as usize] = self.registers[rt as usize] >> shamt;
+                        }
+                        0x08 => {
+                            // jr
+                            self.pc = self.registers[rs as usize]
                         }
                         0x0c => {
                             // syscall

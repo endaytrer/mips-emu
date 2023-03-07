@@ -1,8 +1,8 @@
 use std::fs;
-use std::io::Read;
+use elf::{ElfBytes, endian::{AnyEndian, BigEndian, EndianParse}};
+
 use crate::{cpu::{Cpu, Size}, exception::Exception, devices::device::Device, coprocessor::{PTBASE}, bus::ROM_BASE};
 use crate::bus::{UART_BASE, VIRTIO_BASE};
-use crate::cpu::PGSIZE;
 use crate::dram::Dram;
 
 pub const HUGE: u32 = 0x40;
@@ -12,7 +12,10 @@ pub const USER: u32 = 0x8;
 pub const READ: u32 = 0x4;
 pub const WRITE: u32 = 0x2;
 pub const DIRTY: u32 = 0x1;
-
+// virtual memory allocation
+pub const TEXT: u32 = 0x400000;
+pub const DATA: u32 = 0x10000000;
+pub const HEAP: u32 = 0x10008000;
 struct PTE {
     entry: u32
 }
@@ -105,7 +108,7 @@ impl Allocator {
             allocated: 2
         }
     }
-    pub fn kalloc_page(&mut self, dram: &mut Dram, vaddr: u32) -> u32 {
+    pub fn kalloc(&mut self, dram: &mut Dram, vaddr: u32) -> u32 {
         // assume vaddr is page-aligned
         assert_eq!(vaddr & 0xfff, 0);
         let offset = ((vaddr >> 22) & 0x3ff) << 2;
@@ -148,22 +151,41 @@ pub fn create_meta_page_table(dram: &mut Dram) {
 }
 pub fn load_kernel(dram: &mut Dram, filename: &str) {
     let mut allocator = Allocator::new();
-    let mut kernel = fs::File::open(filename).unwrap();
-    let meta = fs::metadata(filename).unwrap();
-    let mut buf = vec![0u8; meta.len() as usize];
-    kernel.read(&mut buf).unwrap();
-    let mut vaddr: u32 = 0x400000;
-    let mut ptr = 0;
-    while ptr < meta.len() as u32 {
-        let paddr = allocator.kalloc_page(dram, vaddr);
-        let mut max = PGSIZE;
-        if meta.len() as u32 - ptr < max {
-            max = meta.len() as u32 - ptr;
+    let buf = fs::read(filename).unwrap();
+    let slice = buf.as_slice();
+    let file = ElfBytes::<AnyEndian>::minimal_parse(slice).unwrap();
+    // .text and .data segment
+    let text_header = file.section_header_by_name(".text").unwrap().expect("no .text section");
+    let (text_segment, _) = file.section_data(&text_header).unwrap();
+    let mut pbase = 0;
+    let mut ptr: usize = 0;
+    while ptr < text_segment.len() {
+        let vaddr = TEXT + ptr as u32;
+        if ptr & 0xfff == 0 {
+            // page start, allocate page;
+            pbase = allocator.kalloc(dram, vaddr);
         }
-        for offset in 0..max {
-            dram.content[(paddr + offset) as usize] = buf[(ptr + offset) as usize];
+        let inst = BigEndian.parse_u32_at(&mut ptr, text_segment).unwrap();
+        let paddr = pbase + ptr as u32;
+        dram.write(paddr, inst, Size::Word).unwrap();
+        ptr += 4;
+    }
+
+    if let Some(data_header) = file.section_header_by_name(".data").unwrap() {
+        let (data_segment, _) = file.section_data(&data_header).unwrap();
+        let mut pbase = 0;
+        let mut ptr: usize = 0;
+        while ptr < data_segment.len() {
+            let vaddr = DATA + ptr as u32;
+            if ptr & 0xfff == 0 {
+                // page start, allocate page;
+                pbase = allocator.kalloc(dram, vaddr);
+            }
+            let inst = BigEndian.parse_u32_at(&mut ptr, data_segment).unwrap();
+            let paddr = pbase + ptr as u32;
+            dram.write(paddr, inst, Size::Word).unwrap();
+            ptr += 4;
         }
-        vaddr += PGSIZE;
-        ptr += PGSIZE
+
     }
 }

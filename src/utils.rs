@@ -73,6 +73,9 @@ impl Instruction {
     pub fn sra(rd: u8, rt: u8, shamt: u8) -> Self {
         Self::R { opcode: 0x0, rs: 0, rt, rd, shamt, funct: 0x03 }
     }
+    pub fn jr(rs: u8) -> Self {
+        Self::R {opcode: 0x0, rs, rt: 0, rd: 0, shamt: 0, funct: 0x08 }
+    }
     pub fn syscall() -> Self {
         Self::R { opcode: 0x0, rs: 0, rt: 0, rd: 0, shamt: 0, funct: 0xc }
     }

@@ -1,13 +1,13 @@
 use crate::{devices::device::Device, bus::DRAM_SIZE, exception::Exception, utils::{concat_halfword, concat_word, get_byte_from_halfword, get_byte_from_word}};
 
 pub struct Dram {
-    pub content: Vec<u8>,
+    pub content: [u8; DRAM_SIZE as usize],
 }
 
 impl Dram {
     pub fn new() -> Self {
         Self {
-            content: vec![0; DRAM_SIZE as usize],
+            content: [0; DRAM_SIZE as usize],
         }
     }
 }

@@ -1,5 +1,5 @@
 use std::{thread, sync::{Arc, Mutex}};
-use crate::bus::{UART_BASE, UART_END, VIRTIO_BASE, VIRTIO_END};
+use crate::bus::{UART_BASE, UART_END, VIRTIO_BASE, VIRTIO_END, Bus};
 
 use crate::cpu::{Cpu, Instruction};
 
@@ -18,7 +18,7 @@ mod memory;
 mod test;
 
 fn main() {
-    let mut cpu = Cpu::new("asm/gauss");
+    let mut cpu = Cpu::new("os/main.o");
     // let stop_signal = Arc::new(Mutex::new(false));
     // let ss_main = stop_signal.clone();
     // let cause = cpu.bus.load_raw_cause();
